@@ -24,11 +24,9 @@ using namespace std;
 
 // constants specific to this program
 const char       *gcaPROGRAM_NAME="sb";
-const char       *gcaPROGRAM_DESCR="primitive numeric integration";
-const char       *gcaVERSION="0.0.2";
-// version 0.0.1 was the initial build of this program
-// version 0.0.2 was when we got one working with OpenMP
-const char       *gcaCOPR_DATE="2018-2019";
+const char       *gcaPROGRAM_DESCR="primitive numeric integration benchmark";
+const char       *gcaVERSION="1.0.0";
+const char       *gcaCOPR_DATE="2019";
 
 // generic constants
 const int     giSTRING_LEN=512;      // room for error in long strings
