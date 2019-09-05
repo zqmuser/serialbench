@@ -201,7 +201,7 @@ editor, you should take care of configuring that now.
 5) Make a fork of the SerialBench project in your GitHub account.  To do
 this, login to GitHub, then go to 
 
-?????????
+https://github.com/zqmuser/serialbench
 
 Click on the button that says "fork" at the top right of the page.
 After a couple minutes the repository listed at the top left of the page
@@ -225,7 +225,7 @@ finds differences on Windows, please add comments in separate paragraphs
 starting the first sentence with "WINDOWS:".
 
     cd /PATH/WHERE/I/WANT/SB
-    git clone git@github.com:MY_ACCOUNT/SerialBench.git
+    git clone git@github.com:MY_ACCOUNT/serialbench.git
 
 This will create a new directory with your local copy of the SerialBench
 repository.  It will automatically set the "origin" to your public fork on
@@ -234,7 +234,7 @@ will be pushed to your public repository by default.
 
 7) Configure your upstream repository.  
 
-    git remote add upstream git@github.com:SerialBench/SerialBench.git
+    git remote add upstream git@github.com:zqmuser/serialbench.git
 
 By setting your "upstream" to the main repository, you can rebase (pull changes
 made by other developers) from the main repository.
@@ -480,14 +480,14 @@ and email for github (see steps above), you can setup a local repository
 (i.e. on your laptop) with the command
 
     cd /PATH/WHERE/I/WANT/SB
-    git clone git@github.com:SerialBench/SerialBench.git
+    git clone git@github.com:zqmuser/serialbench.git
 
 This will create a new directory with your local copy of the 
 repository.  It will automatically set the "origin" to the main copy on GitHub.
 
 2) Configure your upstream repository.  
 
-    git remote add upstream git@github.com:SerialBench/SerialBench.git
+    git remote add upstream git@github.com:zqmuser/serialbench.git
 
 By having both your "origin" and "upstream" set to the main repository,
 you are rebasing against the main repository and pushing new work to the 
@@ -504,7 +504,7 @@ public repository, would integrate a change made by one of the developers.
 2) Pull from the developers public repository.
 
     cd /path/to/SerialBench
-    git remote add DEVELOPER https://github.com/DEVELOPER/SerialBench.git
+    git remote add DEVELOPER https://github.com/DEVELOPER/serialbench.git
     git fetch DEVELOPER
 
 3) Look at the changes (NEED MORE DETAIL HERE)
