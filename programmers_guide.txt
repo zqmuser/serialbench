@@ -1,0 +1,696 @@
+
+               SerialBench
+
+This is small benchmark program that does a numerical integral
+(which can be analytically integrated) that is used in many
+quantum chemistry programs.  It is the electron-electron
+repulsion integral between 1s GTO basis functions centered on
+the same atom.
+
+This integral was selected because it requires an inner loop 
+"if" statement to handle the parametric singularity.  This makes 
+it difficult for the compiler to utilize vector instructions 
+(SSE, AVX, AVX-512, etc).
+
+When this was written and tested, GCC compiler 8.x could not
+vectorize it well.  Intel compiler 19.x and Portland Group 19.x
+did better.  As such the builds with GCC took 10 times as long
+as the builds with Intel or PGI to run the benchmark.
+
+
+Program structure:
+
+SerialBench consists of two files; sb.cc and sb.h
+
+The integral exponents are hard coded.  The executable accepts
+a single argument, which is the number of reiman sum integraion 
+points in one dimension.  
+
+Note that this is a 6D integral so doubling the number of 
+integration points increases the run time 64 fold (2^6).
+
+
+Coding style:
+
+This may be overkill for a little benchmark, but it my
+standard style guide that I have used for many projects.
+
+Some points of style should be things you are well familiar with from any other
+project that has a style guide.
+* Use indents to make loops, control statements and other groupings visible.
+* If something isn't readily obvious to someone who didn't write the code,
+  put in a comment.
+* If you are implementing an algorithm that you found in a paper or book,
+  cite where you found the algorithm in a comment.
+
+Naming Convention:  This convention is camelcase with 2-3 initial 
+lower case letters to indicate the variable type.
+
+The first lower case character indicates the scope of the variable.
+First lower case:  l   local
+                   g   global
+                   c   class data
+                   t   data inside of a structure
+Function arguments are local scope.
+
+The second lower case character indicates the type of data.
+Second lower case:  b  boolean
+                    c  char
+                    d  double
+                    e  file
+                    f  float
+                    h  short
+                    i  int or enumerated
+                    l  long int, long in java, list in LSL
+                    n  interface
+                    o  object
+                    p  pointer
+                    r  process
+                    s  string      (java, scripting, not C/C++)
+                    t  struct
+                    u  undefined   (i.e. in C++ template)
+                    v  va_list
+                    x  exception
+                    y  byte
+                    z  event
+Unsigned types are not unique because C++ supports both "unsigned int"
+and "unsigned char".  As such, we use a name modification for it.
+For example; liUnsTemp
+Strings in C/C++ are character arrays or character pointers.
+Double pointers ( **name) are named the same as single pointers.
+Where appropriate, the name can include "2D" or some other
+description.
+
+A third lower case character is included, only if a variable is not
+a simple variable.
+Third lower case:  a  array (fixed length)
+                   p  pointer
+                none  simple variable
+The 'a' designator is used only if the array size is set at compile time.
+If the variable is declared as a pointer, then allocated as an array at
+run time, it gets the 'p' designator.
+
+Units should be part of the variable name, where ambiguous.
+Examples
+  int     liCount;  // loop counter
+  double  ldTolerance;  // integration tolerance
+  char    lcaElement_name[giSTRING_LEN];  // Full name, not symbol
+  double  ldBondLengthAng;
+  double  ldDistance_Bohr;
+  double  ldAngleRad, ldDihedralDeg;
+  double  ciCartesianUnk;
+           // Note assume to be in Angstroms,
+           // unless user includes the "bohr" keyword
+
+There are functions in FILE.c that are not listed in FILE.h  This is a way for
+C programs to mimic private object class methods in C++.
+
+Preprocessor variables are used to define fixed limits on the programs capability,
+such as the maximum angular momentum set with
+    #define MAXL          4
+    // some code
+    #undef MAXL
+This is an alternative to "static const int MAXL = 4;"  Both do the same job, with
+some subtle differences.  The advantage of the #define mechanism is the ability
+to put in #undef at the desired point, thus mimicking a private class variable in C++.
+The advantage of the const mechanism is that MAXL will be in the symbol table 
+and thus show up as MAXL instead of 4 to a debugger.  For more discussion see
+http://stackoverflow.com/questions/1674032/static-const-vs-define-vs-enum
+Note that some of the .c files don't have an #undef statement, thus making it 
+visible to all functions in that file.
+
+In some places, multiple variables are packed into a structure like this
+    struct GTOBasisSet_t{
+        char          name[BASIS_NAME];
+        int           Z;               // atomic number it belongs to
+        int           nContract;       // number of contracted functions
+        int           l;               // x-coordinate angular index
+        int           m;               // y-coordinate angular index
+        int           n;               // z-coordinate angular index
+        double        *exp;            // array for exponent
+        double        *coef;           // array for coeffients
+    };
+This is a convenient way of keeping a set of variables together when they 
+are always used together.  It results in having a smaller list of function arguments.  
+It can also be used as a way of mimicking object class variables in C++.
+
+Some of the files had control-M characters (the Windows text file end of line 
+character), but seemed to compile fine with or without them on Linux, Mac, and Windows.
+
+
+Getting SerialBench to use as is:
+
+Downloading the most recent copy should be fine.  It is not necessary to clone
+a git repository if you are only using this to run benchmarks.
+
+
+Getting SerialBench for developers:
+
+The following are directions for people who want to make additions to the 
+SerialBench project.  These additions could be new features in the code, 
+bug fixes, documentation updates, examples, software tests, or anything else 
+that changes what users get when they download a copy of the code.
+
+There are a number of write ups on how to use git and github, but because git
+is such a flexible tool, many of them are relevant to a different workflow from
+the one being used for SerialBench development.  Please follow the directions
+in the following paragraphs when making changes to SerialBench.  A brief 
+discussion of the merits of this particular workflow process is in the 
+following section of this document.
+
+Every commit to git includes a comment to record what it is about.  However, 
+only the project directors should be using the "tag" feature of git to 
+tag a given build with a release version.  This is typically done by mutual
+consent of the directors.
+
+There are a number of graphical tools for working with Git and GitHub.  We are 
+going to focus on commands that can be typed into a shell as much as possible.
+This is done for two reasons; first it is how experienced software developers
+most typically use Git, second it ensures that these directions will (almost 
+all) work regardless of whether you are working from a computer running 
+Windows, MacOS, or Linux.
+
+1) Install git on your computer.  This is often the laptop or desktop computer
+right in front of you.  If you do your work on the login node of high 
+performance computing cluster, you would use ssh to get to the login node 
+then work with git there.  First check if git is already installed by typing 
+"git version".  If that does not return a line of information on the git 
+version, then you need to find the directions for installing git on the 
+operating system you are using (remember google is your friend).
+
+2) Make an account for yourself on the website https://github.com/
+
+3) Set up a ssh key for accessing GitHub.  Directions are on this webpage.  
+At the top you can select which operating system you are using.
+https://help.github.com/articles/connecting-to-github-with-ssh/
+
+SIDE NOTE:  This webpage recommends setting up a key with a passphrase.  It is 
+also possible to just press Return for the passphrase, thus making it never ask
+you the password.  If you do this on Mac, you do not have to use the keychain
+or start the ssh-agent.  However, if someone gets access to your local computer,
+they can immediately access anyplace you have passwordless ssh access.
+
+4) Add your contact info into your local git repository
+
+    git config --global user.name "John Doe"
+    git config --global user.email johndoe@example.com
+
+The default editor for git is "vi".  If you want to use a different text
+editor, you should take care of configuring that now.
+
+5) Make a fork of the SerialBench project in your GitHub account.  To do
+this, login to GitHub, then go to 
+
+?????????
+
+Click on the button that says "fork" at the top right of the page.
+After a couple minutes the repository listed at the top left of the page
+should now say MY_NAME/SerialBench
+
+At this point, it is convenient to save a bookmark to the location of 
+your public fork of the repository.  If you don't and can't find it later,
+click on your account icon at the top right, then select "Your Profile".
+
+It is possible to edit files inside of GitHub, but this guide is being written
+by a Linux and vi person, so we will focus on a workflow for working on your
+local laptop via a terminal window.  Also, most developers work with a local 
+copy rather than directly on GitHub.
+
+6) Set up a clone of the repository on your local computer.  Now we are typing 
+commands in a shell.  
+
+NOTE:  This document was written for working in the terminal window
+of a Mac.  Working in a Linux shell window should be identical.  If someone 
+finds differences on Windows, please add comments in separate paragraphs 
+starting the first sentence with "WINDOWS:".
+
+    cd /PATH/WHERE/I/WANT/SB
+    git clone git@github.com:MY_ACCOUNT/SerialBench.git
+
+This will create a new directory with your local copy of the SerialBench
+repository.  It will automatically set the "origin" to your public fork on
+GitHub (not the main repository).  When you push changes to others, they
+will be pushed to your public repository by default.
+
+7) Configure your upstream repository.  
+
+    git remote add upstream git@github.com:SerialBench/SerialBench.git
+
+By setting your "upstream" to the main repository, you can rebase (pull changes
+made by other developers) from the main repository.
+
+Steps 1-7 are initial setup steps.  You may never have to do these again.
+The steps from 8 on are things that are often done many times in the course of 
+a software development project.
+
+8) Create a branch.
+
+    git status
+    git branch
+    git checkout master
+
+The "git status command" is something we type frequently to check what branch 
+we are on, uncommitted changes, etc.  Likewise "git branch" is frequently 
+typed to get a view of the branches in our project.
+
+Here we are making a branch off of master, so we want our master to match the 
+master branch on the main repository.  If we haven't made any changes, these
+two commands take place of the rebase procedure we will discuss later.
+
+    git pull upstream master
+    git push origin master
+
+Now we create a new branch.  Checking out master first makes sure we are making
+a branch off of our master (developers get paranoid about this).
+
+    git checkout master
+    git branch BRANCH_NAME
+
+At this point, you have created the new branch, but you are still on 
+the master branch of your local repository.  To switch branches (and see
+what is happening) type
+
+    git branch
+    git checkout BRANCH_NAME
+    git branch
+
+NOTE:  Repositories are for people.  Branches are for features.  Each developer 
+has two repositories, a public one on the GitHub website, and a private, local 
+one on their computer.  A single person might many times create a new branch 
+in their local repository, work on a feature, rebase their master branch, 
+merge the feature branch back into the master, push to their public repository, 
+then delete the branch or keep it open for more work on the same feature.
+
+9) Edit a file.  
+
+At this point you can do a bunch of work writing source code, testing,
+creating example inputs, documenting, committing and repeat.  Nothing need
+be done in git until you get to a point where you feel there is something
+worth saving.
+
+10) Compile.  
+
+It is always a good idea to compile, test, etc.  Git is made to work on 
+source code, but it's utilities can work on any text formatted file, 
+regardless of whether the file name ends with .txt .c .md .h etc.
+Again there is nothing to do in git until you are at the point of saving
+some work.
+
+11) Test.  
+
+A program is only as good as the testing that has been done on it.
+We can't over emphasize the importance of testing in writing good software.
+Again sofware testing is not something that requires additional git 
+commands.
+
+12) Add a file.
+
+Generally, only text files should be added to your Git repository.  These 
+include source code, documentation, example inputs, and unit tests.  The 
+file simply being the directory does not mean Git is tracking it.  The
+file must be added into the repository with the command
+
+    git add FILE_NAME
+
+The rare case when a non text file should be added into git is when it 
+should be distributed with the git source code.  For example, a pdf 
+documentation file may be added into git.
+
+13) Document.  If you are finishing up work on something, or know what the
+input format will look like, update documentation as you go.  Documentation, 
+example inputs, and unit tests should be included in the same branch and pull
+request with the feature development.  If documentation isn't tied to a 
+specific feature (i.e. a new tutorial) documentation can be done in a separate 
+documentation branch.  
+
+14) Commit your work.  The process of edit-compile-test-document-commit 
+can be repeated many times as you work.  Any time you have something working
+and want to save your work, commit it.  If you are done working on a particular
+section of the code, commit it, or any other time it would be nice to be to
+see an old version or your work process.  The command is 
+
+    git commit -a
+
+This will put you into a text editor session where you should edit the
+first line to explain why you did this commit.  When you exit the text 
+editor, your changes will be commited to the current branch.
+
+In general commits are very frequent on feature development branches.
+Some developers like to commit about every 10 minutes to ensure work
+in progress is not lost.  Some have a more organic approach of doing a commit
+when it feels like the work has acheived something, a running test, a 
+completed function, a new example file, etc.  Merges into the master branch 
+are infrequent, usually only when you consider work completed on a given item.
+
+If a commit is addressing a issue (bug or feature request) that is listed on 
+the GitHub for the project, it can be included in your commit comment.
+For example if issue 42 says SB needs a new command line flag, 
+the commit message may look like this 
+"Added help command line flag #42"  When your fix is pushed to GitHub, the commit 
+will show up in the history for that issue.  If your commit says simply 
+"closes #42" or "fixed #42" the issue will be closed automatically when your 
+branch gets merged into the main repository.
+
+Issues are opened in the main repository for a project, and comments can be 
+added there.  However, commits that address issues get created in developer's 
+repositories, then put into the main repository along with the pull request
+for the completed feature.
+
+NOTE:  It is a best practice to run "git status" and "git branch" when you 
+start to do some work, and again before you commit a change.  "git status" will 
+tell you what branch you are working on, which saves you the trouble of 
+straightening out problems because you were working an a different branch from 
+where you thought you were working.
+
+Repeat the previous steps to edit, test, and commit.  Once your feature is 
+complete, go on to the following step.
+
+15) The following steps A-F rebase your distribution master branch
+
+NOTE: Users should rebase in their repository before submitting a pull request
+to merging changes back into the main repository.  Never rebase a main 
+repository as this can get it hopelessly out of sync with the repository 
+copies the software developers are working on.
+
+  A) Pull the remote copy down so we can look at it
+
+    git checkout master
+    git fetch upstream
+
+  B) See what is in the main repository master but not in your own master branch
+
+    git log master..upstream/master
+
+  C) See what is in your own master that is not in the main repository master
+
+    git log upstream/master..master
+
+  D) Update your local and public repositories to match the remote copy.
+
+    git checkout master
+    git rebase upstream/master
+    git push origin master
+
+  E) Now merge your feature banch into your master branch. 
+
+    git checkout master
+    git merge FEATURE_BRANCH_NAME
+
+  F) Your merge might fail with a conflict, like this
+     "CONFLICT (content): Merge conflict in src/FILE.h"
+     One wayt to fix this is with the mergetool
+
+    git mergetool
+
+  G) Push this up to your public repository
+
+    git push origin master
+
+  H) Once you go back to your own branch, you will probably want to make
+     it match the merged set of files
+
+    git checkout FEATURE_BRANCH_NAME
+    git merge master
+
+16) Create a pull request.  
+  * Login to your account on GitHub.  
+  * Go to your public SerialBench repository
+  * Click on the "Pull requests" tab (NOT "Pull Requests" in the black top bar.)
+  * Click on "New pull request"
+  * Fill in the form.  A good title and description helps the administrators
+accept pull requests quickly.
+
+
+Some extra discussion about this workflow:
+
+When do you issue a pull request back to main the main repository?
+* When your new work is complete, working correctly, tested, not breaking any of 
+  the tests, and validated as getting the valid results for that item.
+* Partially completed work may be put in main if 
+  - it doesn't prevent anything else from failing
+  - you feel other developers may need it for their work 
+
+Who merges to master?
+* If the developer merges to their master, it is their problem to fix merge 
+issues.  However, it means their master is ahead of the main repository.  If 
+their changes are altered or rejected, they have some messiness the next time 
+they rebase.
+* If the integrator merges to master, then the integrator needs to understand
+the developers changes well enough to know how to resolve conflicts.  Also,
+the the developer has to wait for an integrator to update the main repository 
+to rebase to their own work.
+* We prefer having the developer merge to their rebased master.
+
+
+More useful git commands:
+
+While you are working on your branch on your local machine, you may find that a
+particular change that you committed had a problem and you want to get rid of 
+it.  If the change is already committed, the process of removing it is 
+
+  A) git checkout BRANCH_NAME
+  B) git log --oneline
+     From the output in B) find the commit number that you want to remove
+     (thus going back to the previous commit and erasing any work done after 
+     that).
+  C) git revert COMMIT_NUMBER_TO_REMOVE
+
+Sometime you realize the additions you made are wrong, but haven't yet committed
+them.  To go back to the last commit thus erasing all uncommitted work use the
+command.
+
+  git reset --hard
+
+WARNING:  Use the reset and revert options carefully as you can easily erase 
+work that you didn't want lost.
+
+
+Integrator directions:
+
+The following are steps that the integrator, one of the project directors,
+takes to merge in changes when a pull request is received.
+
+QUESTION: Does a project director have a public repository, or is the
+main one their public?
+ANSWER: The director who acts as integrator often uses the main repository as
+their public origin and upstream.  Other directors may do either.
+
+1) if you are a project director, and have already setup a ssh key, user name,
+and email for github (see steps above), you can setup a local repository 
+(i.e. on your laptop) with the command
+
+    cd /PATH/WHERE/I/WANT/SB
+    git clone git@github.com:SerialBench/SerialBench.git
+
+This will create a new directory with your local copy of the 
+repository.  It will automatically set the "origin" to the main copy on GitHub.
+
+2) Configure your upstream repository.  
+
+    git remote add upstream git@github.com:SerialBench/SerialBench.git
+
+By having both your "origin" and "upstream" set to the main repository,
+you are rebasing against the main repository and pushing new work to the 
+main repository.
+
+Steps 1 & 2 above are initial setup setup steps.  You may only do these again
+when setting up a repository on a new local computer.
+
+Here is how one of the project directors, who has push access to the main
+public repository, would integrate a change made by one of the developers.
+
+1) Get a pull request
+
+2) Pull from the developers public repository.
+
+    cd /path/to/SerialBench
+    git remote add DEVELOPER https://github.com/DEVELOPER/SerialBench.git
+    git fetch DEVELOPER
+
+3) Look at the changes (NEED MORE DETAIL HERE)
+
+  * see what has changed (hopefully they had a more descriptive name than
+the feature7 name we use in the example)
+
+    git branch -r
+    git log master..DEVELOPER/FEATURE_NAME --stat
+    git checkout DEVELOPER/FEATURE_NAME
+
+  * compile
+  * run some tests
+  * see if they added the new feature to the documentation
+  * We could find a code metric program to report the percentage of comments, 
+    and other points of style.
+  * Look at the code to see if comments include things like a reference to the
+    research article.
+
+4) rebase my master to match the main repository.  If I am the only person
+doing integration this is unnecessary.  If another project director is 
+integrating, or pushing directly to the main repository, this is an important
+step. 
+
+    git fetch upstream
+    git log master..upstream/master
+    git log upstream/master..master
+    git checkout master
+    git rebase upstream/master
+
+5) merge into my master
+
+    git checkout master
+    git merge DEVELOPER/master
+
+6) If circumstances dictate, the integrator (project director) can add a tag, 
+like this;
+
+  A) Update the constant VERSION_NUMBER in the file src/sq.c
+
+  B) Run a command with the following syntax
+
+    git tag -a v3.9.0a -m "version to start working on GitHub"
+
+7) push to the public 
+
+    git push origin master
+    git push origin --tags
+
+The first command is the same command that the developer used to push to their 
+public repository.  This is because, the person acting as integrator is using 
+the main public copy as their origin.
+
+Pushing a new master with a tag will automatically create a new release
+in GitHub.
+
+
+Discussion of software development work flow:
+
+There are various source code repository systems such as;
+Subversion - a central repository system, designed for a push work flow.
+Git - distributed system designed for a "pull" format for open source 
+      development
+Mercurial - distributed system designed for "push" or "pull" usage, with
+            either easily disabled if the project managers choose.
+Each of these has borrowed functionality from the other, so they all support
+multiple workflow options if not optimally.
+
+Like most open source projects, SB uses a "pull" system.  This means that
+contributors can send a pull request to the project directors.  The directors
+can then review the changes before accepting them into the working branch.
+This system is used so that many people can contribute to a project, but there
+is still some control on what is contributed to hopefully avoid problems with
+buggy code, people injecting back doors, etc.  For more discussion see
+https://www.researchgate.net/publication/255710463_Choosing_a_Version_Control_System
+
+Even within "pull" style software development, there are a number of schools 
+of thought about how you should organize the code repository.  There may be
+a main branch, development branch, version branches, and branches only being
+used by a single developer.  A summary of the common formats is at
+https://www.atlassian.com/git/tutorials/comparing-workflows
+
+Some options are;
+
+1) A Centralized Workflow.  Frequent commits to the master branch or trunk let
+all developers see the up-to-the-minute status of the work, at the expense of 
+often having a master branch that is broken by half-written, mostly untested, 
+code.  This is the workflow that CVS and Subversion were originally designed 
+to use.  It is possible in Git, but not convenient to follow for an open source 
+project with multiple programmers, nor does it leverage the capabilities of 
+Git.
+
+2) A Feature Branch Workflow.  In this model, every time a developer starts
+working on a new feature they create a new branch off of the master line
+(and hopefully name it so everyone knows what it's for).  The developer can
+do hundreds of commits of half written code to this branch to save their work.
+When they feel it is done and thoroughly tested, they submit a pull request.  
+This is the workflow that SerialBench is following.
+
+3) The Gitflow Workflow.  Larger teams with more complex projects may choose 
+a Gitflow Workflow.  This has multiple core branches, a master for numbered
+releases only, a development branch, feature branches being used by individual
+develoers, release branches, hotfix branches, and maintenance branches.
+
+4) The Fork Workflow.  In this format there are multiple server side main 
+branches that pull from one another.  There might be one for every developer, 
+or a hand full for Ubuntu, Redhat, SUSE, etc.
+
+What is best for SB?  We will fall back to the advice on how to choose 
+infrastructure for business startups... "Do the simplest thing that meets 
+your current needs and has a bit of room for future growth."  At the time this 
+document was written, SB had from one to a few people working on it on any 
+given week.  As such the Feature Branch workflow is probably best for SB at 
+present.  There are a couple implications of this decision.
+
+1) The master branch is the effectively the development tip as seen by anyone
+who isn't writing code for the project.
+
+2) Developers should use unit tests or functional tests of the whole program to
+verify the feature they are developing is working before issuing a pull request 
+to bring it into the master.  These tests should also check that they didn't 
+accidentally break something else in the code (called a regression test).
+
+3) Developers should update and commit documentation to reflect new features 
+before issuing a pull request.
+
+4) Users downloading SB to use but not develop should be aware that the master
+branch tip should be working, but is not necessarily as heavily tested as a 
+tagged stable version release.
+
+The workflow described above reflects a managerial decision that developers
+should get their work to merge into the master branch before issuing
+a pull request for their master branch.  In this format, the branches
+in a developer's local repository are not seen in the main repository.
+
+Open source software development depends upon a balancing act.  Paid software 
+developers can be held to strict coding standards by their management.  Open 
+source developers, often volunteers, need to be given more freedom to develop 
+sections of code they are interested in along a path they choose so that they 
+will be motivated to participate in the project.  
+
+A common reason that open source projects fail to produce a good end
+result or see public adoption is because everyone likes to write code, but many
+developers don't like testing, debugging, or writing documentation.  If someone
+doesn't take responsibility for those activities, the project becomes a pile
+of buggy, poorly documented code which no one will want to use or develop.
+The project directors need to find a balance to keep up product quality without
+making the project unpleasant for developers to work on.
+
+As with many projects, progress isn't always steady.  It has lag times and
+spurts of activity, then new people start working on different aspects of the
+project.  Somewhere along the line, a choice is made to add a version number.
+There are many schools of thought on version numbering.  The wikipedia article
+has a good summary of many of these
+https://en.wikipedia.org/wiki/Software_versioning
+
+SerialBench uses a variation of the Semantic Versioning Scheme 
+(explained at http://semver.org/ ) Versions of SB are numbered as;
+
+     major.feature.other
+
+* Major versions change if the code is redesigned, or a goal for major 
+  functionality addition has been reached, or at some other important mile 
+  stone in the project.  A non back compatible change where your old input 
+  files no longer work would be one example of a major version release.
+* The feature number changes when there are one or more new types of 
+  calculations that can be run, or new input options the program accepts.
+* The other number changes for things less visible to the casual end user than 
+  a major or feature release.  Examples of these are bug fixes, documentation 
+  updates, adding examples, updates to the compile infrastructure, support for 
+  new operating systems, or adding more internal testing.
+
+Within these guidelines, we are using the organic process of letting the
+contributors choose when they feel like a new version tag is warranted,
+which is not necessarily every merge into the master branch.  Contributors
+are welcome to suggest a new tag be added in the text of their pull request.
+We prefer to let the integrator set the version tag to avoid problems with
+two developers using the same version number for different features.
+
+
+Software Testing:
+
+At this point, this project isn't large enough or undergoing enough
+development for testing other than manual testing to be waranted.
+
+Also see the white paper titled "Software Testing Overview" at
+https://www.researchgate.net/profile/David_Young30
+
+
