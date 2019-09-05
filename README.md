@@ -1,5 +1,4 @@
-
-      SerialBench
+# SerialBench
 
 This is small benchmark program that does a numerical integral
 (which can be analytically integrated) that is used in many
@@ -47,10 +46,10 @@ sb 10
 sb 20
 sb 80
 
-WARNING:  This scales as N^6 so doubling the number of steps
+**WARNING:**  This scales as N^6 so doubling the number of steps
 means it will take 64 times as long to run.
 
-NOTE:  For best efficiency with OpenMP, the number of points
+**NOTE:**  For best efficiency with OpenMP, the number of points
 should be a multiple of OMP_NUM_THREADS
 
 A simple script to run and time it might look like this
