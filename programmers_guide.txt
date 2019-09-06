@@ -551,6 +551,22 @@ like this;
 
 7) push to the public 
 
+This works, although it generates warnings
+
+    git push git@github.com:zqmuser/serialbench.git
+    git push git@github.com:zqmuser/serialbench.git --tags
+
+The command "git remote" should display this.
+
+origin
+upstream
+
+If not, update it like this
+
+    git remote add origin git@github.com:zqmuser/serialbench.git
+
+This should work if we have origin set
+
     git push origin master
     git push origin --tags
 
