@@ -42,9 +42,11 @@ Running "sb" gives help info.
 sb requires a single argument, which is the number of integration
 steps in each of the six dimensions.  Thus sb can run with 
 
-  sb 10
-  sb 20
-  sb 80
+~~~
+sb 10
+sb 20
+sb 80
+~~~
 
 **WARNING:**  This scales as N^6 so doubling the number of steps
 means it will take 64 times as long to run.
@@ -54,6 +56,7 @@ should be a multiple of OMP_NUM_THREADS
 
 A simple script to run and time it might look like this
 
+~~~
 #!/bin/bash
 export OMP_NUM_THREADS=20
 start_time=$(date '+%s')
@@ -65,6 +68,7 @@ min=$(((elapsed_time / 60) % 60))
 hr=$((elapsed_time / 3600))
 printf '%d:%02d:%02d' $hr $min $sec
 echo
+~~~
 
 This is just a great quote, so we are including it.
 "Numerical analysis is partially a science and partially an art."
