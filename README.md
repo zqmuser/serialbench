@@ -42,9 +42,9 @@ Running "sb" gives help info.
 sb requires a single argument, which is the number of integration
 steps in each of the six dimensions.  Thus sb can run with 
 
-sb 10
-sb 20
-sb 80
+  sb 10
+  sb 20
+  sb 80
 
 **WARNING:**  This scales as N^6 so doubling the number of steps
 means it will take 64 times as long to run.
